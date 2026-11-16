@@ -1,0 +1,312 @@
+<!doctype html>
+
+<head>
+<meta charset="utf-8">
+<title>Lab 12 Slomiak</title>
+<style>
+
+body {
+
+font-family: sans-serif;
+font-size: 15px;
+font-weight: bold;
+color: white;
+
+background: linear-gradient(135deg, rgb(11, 11, 132), rgb(73, 5, 73), rgb(118, 5, 5), rgb(73, 5, 73), rgb(11, 11, 132));
+background-size: 400% 400%;
+
+animation: gradient 15s ease infinite;
+height: 100vh;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+button {
+  background-color: white;
+  border: none;
+  color:black ;
+  padding: 15px 32px;
+  font-family: sans-serif;
+  font-weight: bold;
+  text-align: center;
+  font-size: 12px;
+  margin: 4px 2px;
+}
+
+</style> 
+
+    </head>
+        <body>
+
+
+<button id="button1" type="button">Play note</button>
+
+<p>
+Delay time <input id="time" type="range" min="10" max="2000" step="10" value="350">
+<br>
+<br>
+Feedback <input id="fb" type="range" min="0" max="95" step="1" value="50">
+<br>
+<p>
+Mod Speed (Hz) <input id="mod" type="range" min="1" max="500" step="1" value="10">
+</p>
+
+<button id="button2" type="button">Play note</button>
+<p>
+Modulator <input
+      type="range"
+      min="0"
+      max="10000"
+      step="10"
+      value="100"
+      id="Mod1">
+    </p>
+<p>
+    Index <input
+      type="range"
+      min="0"
+      max="1000"
+      step="1"
+      value="500"
+      id="Dex1">
+</p>
+    Filter Speed <input
+      type="range"
+      min="0"
+      max="25"
+      step="0.01"
+      value="15"
+      id="Speed1">
+      <p>
+Delay time  <input id="time2" type="range" min="10" max="2000" step="10" value="350">
+<br>
+<br>
+Feedback  <input id="fb2" type="range" min="0" max="95" step="1" value="50">
+<br>
+
+
+<script>    
+
+const ctx = new AudioContext();
+
+const master = new GainNode(ctx)
+master.gain.value = 0.3;
+
+const delay = new DelayNode(ctx)
+delay.delayTime.value = 0.35
+
+const feedback = new GainNode(ctx, { gain: 0.5 });
+
+const hpfilter = new BiquadFilterNode(ctx, { type: 'highpass', frequency: 1000 });
+
+let modRateAmount = 1;
+
+delay.connect(feedback);
+feedback.connect(delay);    
+
+delay.connect(hpfilter);
+hpfilter.connect(master);
+master.connect(ctx.destination);
+
+const midiPitches = [40, 42, 44, 45, 47, 49, 50, 52]; // e mixolydian scale
+
+        // 2. Create the random picker function
+        const randomPitch = function() {
+            let randomMidiNote = midiPitches[Math.floor(Math.random() * midiPitches.length)];
+            
+            let newFreq = 440 * 2 ** ((randomMidiNote - 69) / 12);
+
+            return newFreq;
+        }
+
+        const MultArray = [20, 40, 80, 160, 320]
+        const filterFreq = function()
+            {
+                let filterMult = MultArray[Math.floor(Math.random() * MultArray.length)];
+              
+
+                return filterMult
+                        }
+
+document.getElementById('button1').addEventListener('click', function () {
+
+  ctx.resume();
+
+  const t = ctx.currentTime;
+
+  const osc = new OscillatorNode(ctx, { type: 'sawtooth', frequency: randomPitch() });
+
+  const filterLFO = new OscillatorNode(ctx);
+  filterLFO.type = "sine";
+  filterLFO.frequency.value = modRateAmount; 
+
+  const LFOdepth = new GainNode(ctx);
+  LFOdepth.gain.value = 500;
+
+  filterLFO.connect(LFOdepth);
+  LFOdepth.connect(hpfilter.frequency);
+
+  const adsr = new GainNode(ctx, { gain: 0 });
+
+  adsr.gain.setValueAtTime(0, t);
+  adsr.gain.linearRampToValueAtTime(0.2, t + 0.01);
+  adsr.gain.linearRampToValueAtTime(0.2, t);
+  adsr.gain.linearRampToValueAtTime(0.1, t + 0.1);
+  adsr.gain.linearRampToValueAtTime(0, t + 0.1);
+
+  osc.connect(adsr);
+  adsr.connect(delay);
+  adsr.connect(master);
+
+  osc.start(t);
+  filterLFO.start(t);
+  osc.stop(t + 0.9);
+  filterLFO.stop(t + 0.9);
+});
+
+document.getElementById('time').addEventListener('input', function (e) {
+  delay.delayTime.value = e.target.value / 1000;
+});
+document.getElementById('fb').addEventListener('input', function (e) {
+  feedback.gain.value = e.target.value / 100;
+});
+document.getElementById('mod').addEventListener('input', function (e) {
+  modRateAmount = e.target.value / 10;
+});
+
+// 2
+
+let osc1, mod1, filterMod1, modulatorGain1;
+
+const master2 = new GainNode(ctx)
+master2.gain.value = 0.8;
+
+const delay2 = new DelayNode(ctx)
+delay2.delayTime.value = 0.35
+
+const feedback2 = new GainNode(ctx, { gain: 0.5 });
+
+delay2.connect(feedback2);
+feedback2.connect(delay2);    
+
+delay2.connect(master2)
+master2.connect(ctx.destination);
+
+const midiPitches2 = [52, 54, 56, 57, 59, 61, 62, 64]; // e mixolydian scale
+
+        // 2. Create the random picker function
+        const randomPitch2 = function() {
+            let randomMidiNote = midiPitches2[Math.floor(Math.random() * midiPitches2.length)];
+            
+            let newFreq = 440 * 2 ** ((randomMidiNote - 69) / 12);
+
+            return newFreq;
+        }
+
+        const MultArray2 = [20, 40, 80, 160, 320]
+        const filterFreq2 = function()
+            {
+                let filterMult2 = MultArray2[Math.floor(Math.random() * MultArray2.length)];
+              
+
+                return filterMult2
+                        }
+
+document.getElementById('button2').addEventListener('click', function () {
+
+          ctx.resume();
+          const t = ctx.currentTime;
+
+          //Set up Frequency Modulation Tone
+          osc1 = new OscillatorNode(ctx);
+          osc1.frequency.value = randomPitch2();
+          osc1.type = "sine";
+
+          const osc1Gain = new GainNode(ctx);
+          osc1Gain.gain.value = 0.1;
+
+          mod1 = new OscillatorNode(ctx);
+          mod1.type = "sine";
+          mod1.frequency.value = document.getElementById('Mod1').value; // modulator value
+
+          modulatorGain1 = new GainNode(ctx);
+          modulatorGain1.gain.value = document.getElementById('Dex1').value; // Index or strength of harmonics
+
+          //Set up Oscillating Filter
+
+          const filter1 = new BiquadFilterNode(ctx);
+          filter1.type = "lowpass";
+          filter1.frequency.value = filterFreq2();
+          filter1.Q.value = 5;
+
+          filterMod1 = new OscillatorNode(ctx);
+          filterMod1.frequency.value = document.getElementById('Speed1').value;
+          filterMod1.type = "square";
+
+          const filterModGain1 = new GainNode(ctx);
+          filterModGain1.gain.value = 1000;
+
+          //connect everything up
+
+          const adsr2 = new GainNode(ctx, { gain: 0 });
+
+          adsr2.gain.setValueAtTime(0, t);
+          adsr2.gain.linearRampToValueAtTime(0.3, t + 0.2);
+          adsr2.gain.linearRampToValueAtTime(0.15, t + 0.6);
+          adsr2.gain.linearRampToValueAtTime(0.15, t + 1.8);
+          adsr2.gain.linearRampToValueAtTime(0, t + 2.5);
+
+          filterMod1.connect(filterModGain1);
+          filterModGain1.connect(filter1.frequency);
+
+          mod1.connect(modulatorGain1);
+          modulatorGain1.connect(osc1.frequency);
+
+          osc1.connect(osc1Gain);
+          osc1Gain.connect(filter1);
+          filter1.connect(adsr2);
+          adsr2.connect(delay2);
+          adsr2.connect(master2);
+
+          osc1.start(t);
+          mod1.start(t);
+          filterMod1.start(t);
+
+          osc1.stop(t + 2.5);
+          mod1.stop(t + 2.5);
+          filterMod1.stop(t + 2.5);
+
+});
+
+document.getElementById('Mod1').addEventListener('input', function (e) {
+
+            if (mod1) mod1.frequency.value = e.target.value;
+          });
+          document.getElementById('Dex1').addEventListener('input', function (e) {
+            if (modulatorGain1) modulatorGain1.gain.value = e.target.value;
+          });
+          document.getElementById('Speed1').addEventListener('input', function (e) {
+            if (filterMod1) filterMod1.frequency.value = e.target.value;
+          });
+
+          document.getElementById('time2').addEventListener('input', function (e) {
+            delay2.delayTime.value = e.target.value / 1000;
+          });
+          document.getElementById('fb2').addEventListener('input', function (e) {
+            feedback2.gain.value = e.target.value / 100;
+          });
+      
+</script>
+
+</body>
+</html>
